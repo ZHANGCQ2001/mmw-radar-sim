@@ -1,0 +1,17 @@
+2-target dual-frequency experiment at 60.0/64.0 GHz
+===================================================
+
+Experiment ID: dual_two_60_64
+Mode: full
+Carriers GHz: 60, 64
+Radars: 6, RX per radar: 1, targets: 2
+Noise std: 0, grid step: 0.0025 m
+Oracle angle gate: 0
+
+Carrier 1 RD coherent peak: (2.9750, 3.0000) m, nearest T1, error 0.0000 m
+Carrier 2 RD coherent peak: (2.9800, 3.0050) m, nearest T1, error 0.0071 m
+
+Dual-frequency peak: (2.9750, 3.0000) m, nearest T1, error 0.0000 m
+Sidelobe-map correlation: 0.3831
+Target coverage: 2/2, all detected: 1
+T1-T2 spacing 0.0500 m: dip 32.13 dB, resolved=1

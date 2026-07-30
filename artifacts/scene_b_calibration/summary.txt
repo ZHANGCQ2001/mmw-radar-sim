@@ -1,0 +1,11 @@
+Scene B: single-target coherent focusing
+========================================
+
+Experiment ID: scene_b_calibration
+Mode: full
+Carriers GHz: 62
+Radars: 3, RX per radar: 1, targets: 1
+Noise std: 1e-05, grid step: 0.0250 m
+Oracle angle gate: 0
+
+Carrier 1 RD coherent peak: (3.0000, 3.0000) m, nearest T1, error 0.0000 m
