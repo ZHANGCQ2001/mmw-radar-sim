@@ -2,6 +2,10 @@ function catalog = listExperiments()
 %LISTEXPERIMENTS Return supported experiment IDs and short descriptions.
 
 rows = {
+    "single_6uniform", "Single target, six-node uniform array";
+    "single_6golomb", "Single target, six-node Golomb array";
+    "two_5cm_6uniform", "Two lateral targets separated by 5 cm, six-node uniform array";
+    "two_5cm_6golomb", "Two lateral targets separated by 5 cm, six-node Golomb array";
     "scene_a_layout", "Noise-only wall layout and signal-chain check";
     "scene_b_calibration", "Single-target coherent focusing calibration";
     "range_1m", "Two targets separated by 1 m in range";

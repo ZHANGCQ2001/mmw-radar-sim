@@ -11,6 +11,14 @@ cfg = mmw.config.baseExperiment();
 cfg.id = id;
 
 switch id
+    case "single_6uniform"
+        cfg = coreArrayCase(cfg, uniformXM(6), 1, "uniform");
+    case "single_6golomb"
+        cfg = coreArrayCase(cfg, golombXM([0, 1, 4, 10, 12, 17]), 1, "Golomb");
+    case "two_5cm_6uniform"
+        cfg = coreArrayCase(cfg, uniformXM(6), 2, "uniform");
+    case "two_5cm_6golomb"
+        cfg = coreArrayCase(cfg, golombXM([0, 1, 4, 10, 12, 17]), 2, "Golomb");
     case "scene_a_layout"
         cfg.description = "Scene A: wall-mounted layout, no targets";
         cfg.scene.targets = emptyTargets();
@@ -74,6 +82,29 @@ elseif mode ~= "full"
 end
 cfg.mode = mode;
 cfg = mmw.config.validateExperiment(cfg);
+end
+
+function cfg = coreArrayCase(cfg, radarXM, numTargets, layoutName)
+%COREARRAYCASE Configure the four focused six-node comparison experiments.
+cfg.waveform.carrierFrequenciesHz = 62e9;
+cfg.array.radars = makeRadars(radarXM);
+cfg.scene.targets = makeLateralOrRangeTargets([3.0, 3.0], numTargets, 0.05, "x");
+cfg.imaging.xLimM = [2.7, 3.3];
+cfg.imaging.yLimM = [2.8, 3.2];
+cfg.imaging.gridStepM = 0.0025;
+cfg.imaging.enableTimeDomain = false;
+cfg.imaging.enableRangeDoppler = true;
+cfg.fusion.coherenceFactor.enabled = false;
+cfg.fusion.oracleAngleGate.enabled = false;
+cfg.simulation.noiseStd = 0.0;
+
+if numTargets == 1
+    targetText = "single target";
+else
+    targetText = "two lateral targets separated by 5 cm";
+end
+cfg.description = sprintf('Six-node %s array, %s, 62 GHz coherent imaging', ...
+    char(layoutName), char(targetText));
 end
 
 function cfg = fourTargetCase(cfg, radarXM)
