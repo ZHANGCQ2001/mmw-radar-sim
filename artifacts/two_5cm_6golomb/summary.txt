@@ -1,0 +1,11 @@
+Six-node Golomb array, two lateral targets separated by 5 cm, 62 GHz coherent imaging
+=====================================================================================
+
+Experiment ID: two_5cm_6golomb
+Mode: full
+Carriers GHz: 62
+Radars: 6, RX per radar: 1, targets: 2
+Noise std: 0, grid step: 0.0025 m
+Oracle angle gate: 0
+
+Carrier 1 RD coherent peak: (2.9200, 2.9900) m, nearest T1, error 0.0559 m
