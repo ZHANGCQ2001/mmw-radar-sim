@@ -1,5 +1,8 @@
 function image = coherentImage(cfg, array, rd)
 %COHERENTIMAGE Near-field RD-IQ backprojection and coherent fusion.
+%   The imaging grid is processed in vectorized form. Each radar performs
+%   one batched interp2 call for the entire image instead of one interp2
+%   call per image pixel.
 
 xGridM = cfg.imaging.xLimM(1):cfg.imaging.gridStepM:cfg.imaging.xLimM(2);
 yGridM = cfg.imaging.yLimM(1):cfg.imaging.gridStepM:cfg.imaging.yLimM(2);
@@ -8,37 +11,45 @@ numY = numel(yGridM);
 numRadars = array.numNodes;
 
 nodeComplex = complex(zeros(numY, numX, numRadars));
-coherentComplex = complex(zeros(numY, numX));
-noncoherentPower = zeros(numY, numX);
 
 c = cfg.constants.cMps;
 fc = cfg.waveform.fcHz;
 S = cfg.waveform.slopeHzPerS;
 velocityMps = cfg.imaging.velocityMps;
 
-for yIndex = 1:numY
-    for xIndex = 1:numX
-        pointM = [xGridM(xIndex), yGridM(yIndex), cfg.imaging.zM];
-        values = complex(zeros(1, numRadars));
+% Build the complete imaging grid once. pathLength already supports Nx3
+% point inputs, so the propagation path can also be evaluated in one batch.
+[xMeshM, yMeshM] = meshgrid(xGridM, yGridM);
+numPixels = numel(xMeshM);
+pointPositionsM = [xMeshM(:), yMeshM(:), ...
+    repmat(cfg.imaging.zM, numPixels, 1)];
 
-        for radarIndex = 1:numRadars
-            pathM = mmw.geometry.pathLength(array.positionsM(radarIndex,:), pointM);
-            tauS = pathM / c;
-            rangeM = pathM / 2;
-            rdSlice = rd.iq(:,:,radarIndex);
+% The current imaging model uses one hypothesized velocity for the whole
+% image. interp2 requires query arrays with matching dimensions, so create
+% this matrix once and reuse it for all radar nodes.
+velocityQueryMps = repmat(velocityMps, numY, numX);
 
-            rdValue = interp2(rd.velocityAxisMps, rd.rangeAxisM, rdSlice, ...
-                velocityMps, rangeM, 'linear', 0);
+for radarIndex = 1:numRadars
+    % Exact monostatic near-field path for every image pixel at once.
+    pathM = mmw.geometry.pathLength( ...
+        array.positionsM(radarIndex,:), pointPositionsM);
+    pathM = reshape(pathM, numY, numX);
 
-            constantPhaseRad = 2*pi*fc*tauS - pi*S*tauS^2;
-            values(radarIndex) = rdValue * exp(-1j*constantPhaseRad);
-            nodeComplex(yIndex, xIndex, radarIndex) = values(radarIndex);
-        end
+    tauS = pathM / c;
+    rangeM = pathM / 2;
+    rdSlice = rd.iq(:,:,radarIndex);
 
-        coherentComplex(yIndex, xIndex) = sum(values);
-        noncoherentPower(yIndex, xIndex) = sum(abs(values).^2);
-    end
+    % One interpolation call per radar node instead of one per pixel.
+    rdValue = interp2(rd.velocityAxisMps, rd.rangeAxisM, rdSlice, ...
+        velocityQueryMps, rangeM, 'linear', 0);
+
+    constantPhaseRad = 2*pi*fc*tauS - pi*S*tauS.^2;
+    nodeComplex(:,:,radarIndex) = ...
+        rdValue .* exp(-1j*constantPhaseRad);
 end
+
+coherentComplex = sum(nodeComplex, 3);
+noncoherentPower = sum(abs(nodeComplex).^2, 3);
 
 image.xGridM = xGridM;
 image.yGridM = yGridM;
