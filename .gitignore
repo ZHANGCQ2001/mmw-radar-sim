@@ -1,1 +1,6 @@
+*.asv
+*.m~
+*.mat
 *.patch
+artifacts/
+.vscode/

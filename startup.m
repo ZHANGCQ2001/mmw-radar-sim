@@ -1,7 +1,7 @@
-function root = startup()
-%STARTUP Add Radar Simulation v2 to the MATLAB path and return its root.
-
+function startup()
+%STARTUP Add the project root to the MATLAB path.
 root = fileparts(mfilename('fullpath'));
 addpath(root);
-addpath(fullfile(root, 'examples'));
+addpath(fullfile(root,'tests'));
+fprintf('mmw-radar-sim ready: %s\n', root);
 end

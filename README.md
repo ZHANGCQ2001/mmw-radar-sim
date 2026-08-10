@@ -1,109 +1,64 @@
-# Distributed FMCW Radar Simulation v2
+# Six-node same-direction FMCW coherent imaging study
 
-A clean, dependency-light MATLAB implementation of same-wall distributed
-60 GHz FMCW near-field coherent imaging. The v2 tree is independent of the
-legacy prototype and does not require paid radar toolboxes.
+这个版本只保留当前研究所需的最小链路：
 
-## Quick start
+`Config + Array + Scene -> IF -> Range-Doppler -> Near-field coherent imaging -> Metrics`
+
+研究变量只有阵列几何和目标场景。默认比较：
+
+- 六节点均匀阵，3 m 孔径；
+- 六节点 Golomb 阵，标尺 `[0 1 4 10 12 17]`，缩放到相同 3 m 孔径；
+- 单目标；
+- 横向间隔 5 cm 的双目标。
+
+默认关闭噪声和路径损耗，使第一阶段只考察阵列几何带来的相位与空间响应差异。所有目标都显式包含 `rcsM2` 和 `scatterPhaseRad` 字段，默认 RCS 为 1 m^2、散射初相为 0。
+
+## 快速运行
 
 ```matlab
-cd radar_sim_v2
 startup
-result = run_experiment("scene_b_calibration", "smoke", false);
+study = run_compare_arrays(true);
 ```
 
-Run all fast tests:
+单独运行某个场景：
 
 ```matlab
-cd radar_sim_v2
+uniformSingle = run_case("uniform", "single", true);
+golombSingle  = run_case("golomb", "single", true);
+uniformTwo    = run_case("uniform", "two", true, 0.05);
+golombTwo     = run_case("golomb", "two", true, 0.05);
+```
+
+快速检查：
+
+```matlab
 startup
-run_all_smoke_tests
+run_smoke_tests
 ```
 
-Run the principal full-grid acceptance experiment and write artifacts:
+## 结果结构
+
+核心结果不再放在多层 `acquisitions` 结构中：
 
 ```matlab
-result = run_experiment("dual_two_60_64", "full", true);
-result.metrics.dualFrequency.coverage
+result.ifData                   % sample x chirp x radar
+result.rd.iq                    % range x Doppler x radar
+result.image.nodeComplex        % y x x x radar，每个节点的复成像贡献
+result.image.coherentPower      % 六节点复数相参求和功率
+result.image.noncoherentPower   % 六节点功率非相参求和
+result.metrics                  % 定位、分离、PSLR、伪峰等指标
 ```
 
-Run the four-target negative test:
+双目标的 `separated` 只有在两个真实目标都被匹配到后才可能为真，不再把两个错误伪峰误判为“成功分离”。`targetToFalsePeakDb` 用来判断真实目标峰是否高于目标区域之外的最强伪峰。
 
-```matlab
-result = run_experiment("dual_four_60_64", "full", true);
-result.metrics.dualFrequency.coverage
-```
+## 当前阶段有意不包含
 
-List every named experiment:
+- 双载频融合；
+- 相干因子加权；
+- oracle angle gate；
+- 时域匹配滤波成像；
+- 多载频 acquisition 管理；
+- artifacts/manifest 输出系统；
+- 差分共阵处理。
 
-```matlab
-mmw.config.listExperiments
-```
-
-## What is implemented
-
-- Exact TX-target-RX point-target paths and complex FMCW returns
-- Reproducible complex noise and simple path loss
-- Dechirp, range FFT, Doppler FFT, and full complex RD-IQ
-- Time-domain matched filtering and RD-IQ near-field interpolation
-- Single-radar, non-coherent, and coherent distributed images
-- Radar RMS amplitude equalization and configurable coherence factor
-- Explicitly named oracle angle gates for ideal-prior stress tests
-- Independent-acquisition dual-carrier coherent-power multiplication
-- Global peaks, Top-N suppression, target coverage, pair valleys, PSLR, and
-  dual-carrier sidelobe correlation
-- JSON manifest, text summary, PNG figures, and optional MAT output
-
-## Experiment interpretation
-
-The code distinguishes four statements:
-
-1. The numerical chain is implemented.
-2. An ideal simulation produced a positive result.
-3. An ideal simulation produced a negative result.
-4. Hardware feasibility has not been validated.
-
-The 60/64 GHz pair is a large-separation stress test. It does not establish that
-a particular radar supports the acquisition. Each carrier is simulated as an
-independent complete FMCW RD-IQ acquisition. Absolute phase coherence between
-carriers is not assumed; accurate inter-radar calibration within each carrier is.
-
-The `oracle_*` experiments use target truth to gate candidate azimuths. Their
-results are not the natural angular resolution of a compact radar. Ordinary
-imaging never reads target truth.
-
-## Configuration and outputs
-
-Every run starts from a validated `ExperimentConfig`. Full runs write under
-`artifacts/<experiment-id>/`; smoke runs default to no files. Numerical layers
-have no file or plotting side effects. Set:
-
-```matlab
-cfg.output.writeArtifacts = true;
-cfg.output.exportFigures = true;
-cfg.output.saveMat = false;
-```
-
-The manifest records the complete config, random seed, MATLAB release, platform,
-timestamp, and schema version.
-
-## Dependencies
-
-- MATLAB with `matlab.unittest`
-- No Phased Array System Toolbox
-- No Radar Toolbox
-- No Signal Processing Toolbox (windows are implemented locally)
-
-## Not yet implemented
-
-- Radar position, phase, timing, and carrier-offset error sweeps
-- Per-channel and per-radar calibration coefficient estimation
-- First-order wall multipath and reflection sweeps
-- Human multi-scatterer, trajectory, and micro-Doppler models
-- General 3-D volumetric imaging
-- Full 3TX4RX virtual-array scheduling and calibration
-- Real sensor data import and hardware validation
-- Soft probabilistic angular priors
-
-See `ARCHITECTURE.md`, `MIGRATION.md`, and `VALIDATION.md` for design, legacy
-mapping, executed test commands, and numerical acceptance evidence.
+Golomb 阵列在当前代码中仍采用六个物理节点的直接相参成像。如果后续要研究 Golomb 的“不重复基线/差分共阵自由度”优势，应作为第二条独立算法链增加，而不是混入当前直接相参求和流程。
