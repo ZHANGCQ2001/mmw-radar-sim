@@ -37,7 +37,19 @@ widthY = width3dB(y.', profileY, iy);
 
 mainMask = abs(X-truthXY(1)) <= cfg.metrics.targetExclusionXM & ...
            abs(Y-truthXY(2)) <= cfg.metrics.targetExclusionYM;
-falsePeak = max(P(~mainMask), [], 'all');
+falseMask = ~mainMask;
+
+Pfalse = P;
+Pfalse(~falseMask) = -Inf;
+
+[falsePeak, falseLinearIndex] = ...
+    max(Pfalse(:));
+
+[iyFalse, ixFalse] = ...
+    ind2sub(size(Pfalse), falseLinearIndex);
+
+falsePeakXY = ...
+    [x(ixFalse), y(iyFalse)];
 pslrDb = 10*log10((peakPower+eps)/(falsePeak+eps));
 mainEnergy = sum(P(mainMask), 'all');
 sideEnergy = sum(P(~mainMask), 'all');
@@ -50,7 +62,14 @@ metrics.width3dBXM = widthX;
 metrics.width3dBYM = widthY;
 metrics.pslrDb = pslrDb;
 metrics.islrDb = islrDb;
-metrics.strongestFalsePeakDb = 10*log10(falsePeak+eps);
+metrics.strongestFalsePeakPower = ...
+    falsePeak;
+
+metrics.strongestFalsePeakDb = ...
+    10*log10(falsePeak + eps);
+
+metrics.strongestFalsePeakXYM = ...
+    falsePeakXY;
 metrics.pass = metrics.localized;
 end
 
@@ -104,7 +123,17 @@ for targetIndex = 1:2
                    abs(Y-truthXY(targetIndex,2)) <= cfg.metrics.targetExclusionYM;
     falseMask(targetRegion) = false;
 end
-strongestFalse = max(P(falseMask), [], 'all');
+Pfalse = P;
+Pfalse(~falseMask) = -Inf;
+
+[strongestFalse, falseLinearIndex] = ...
+    max(Pfalse(:));
+
+[iyFalse, ixFalse] = ...
+    ind2sub(size(Pfalse), falseLinearIndex);
+
+strongestFalseXY = ...
+    [x(ixFalse), y(iyFalse)];
 targetToFalsePeakDb = 10*log10((min(peakPower)+eps)/(strongestFalse+eps));
 
 separated = coverage == 2 && valleyDepthDb >= cfg.metrics.valleyThresholdDb;
@@ -119,8 +148,22 @@ metrics.coverageFraction = coverage/2;
 metrics.profileYIndex = profileYIndex;
 metrics.profilePeakXM = x(profilePeakIndices).';
 metrics.valleyDepthDb = valleyDepthDb;
-metrics.strongestFalsePeakDb = 10*log10(strongestFalse+eps);
-metrics.targetToFalsePeakDb = targetToFalsePeakDb;
+
+metrics.targetPeakPower = peakPower;
+metrics.targetPeakDb = ...
+    10*log10(peakPower + eps);
+
+metrics.strongestFalsePeakPower = ...
+    strongestFalse;
+
+metrics.strongestFalsePeakDb = ...
+    10*log10(strongestFalse + eps);
+
+metrics.strongestFalsePeakXYM = ...
+    strongestFalseXY;
+
+metrics.targetToFalsePeakDb = ...
+    targetToFalsePeakDb;
 metrics.separated = separated;
 metrics.falsePeakControlled = falsePeakControlled;
 metrics.pass = separated && falsePeakControlled;
