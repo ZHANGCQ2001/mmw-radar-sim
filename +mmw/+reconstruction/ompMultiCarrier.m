@@ -1,51 +1,82 @@
 function result = ompMultiCarrier( ...
-    cfg, array, study, maxTargets)
+    cfg, array, carrierData, maxTargets)
 %OMPMULTICARRIER Multi-carrier OMP-style target reconstruction.
+%
+% carrierData can be either:
+%
+%   1. Lightweight IF observation returned by
+%      mmw.signal.simulateCarrierSet
+%
+%   2. Full multi-carrier study returned by
+%      mmw.fusion.runCarrierSet
 %
 % The algorithm uses:
 %
 %   1. Multi-carrier BP imaging to find a new target position.
-%   2. A unit-reflectivity IF template at the detected position.
-%   3. Joint least-squares estimation for all detected targets.
-%   4. Residual reconstruction from the ORIGINAL observed IF data.
+%   2. Strict local complex matched-filter refinement.
+%   3. Unit-reflectivity IF templates at detected positions.
+%   4. Joint least-squares estimation for all detected targets.
+%   5. Residual reconstruction from the ORIGINAL observed IF.
 %
 % No target truth is used by this function.
-%
-% Current assumptions:
-%   - stationary targets;
-%   - frequency-independent complex scattering coefficient;
-%   - known number of targets through maxTargets;
-%   - coherent-normalized multi-carrier image used for support search.
 
 arguments
     cfg struct
     array struct
-    study struct
+    carrierData struct
     maxTargets (1,1) double {mustBeInteger, mustBePositive}
 end
 
 
 %% Basic information
 
-carrierHz = study.carrierHz;
-numCarriers = numel(carrierHz);
+carrierHz = ...
+    carrierData.carrierHz;
 
-if numel(study.carrierResults) ~= numCarriers
-    error( ...
-        'study.carrierResults does not match study.carrierHz.');
-end
+numCarriers = ...
+    numel(carrierHz);
 
 
 %% Store original observations
 
-originalIF = cell(1, numCarriers);
+if isfield(carrierData, 'ifData')
 
-for k = 1:numCarriers
-    originalIF{k} = ...
-        study.carrierResults{k}.ifData;
+    % Lightweight multi-carrier observation
+    originalIF = ...
+        carrierData.ifData;
+
+elseif isfield(carrierData, 'carrierResults')
+
+    % Backward compatibility with runCarrierSet output
+    originalIF = ...
+        cell(1, numCarriers);
+
+    for k = 1:numCarriers
+
+        originalIF{k} = ...
+            carrierData.carrierResults{k}.ifData;
+
+    end
+
+else
+
+    error( ...
+        ['carrierData must contain either ', ...
+         'ifData or carrierResults.']);
+
 end
 
-residualIF = originalIF;
+
+if numel(originalIF) ~= numCarriers
+
+    error( ...
+        'Number of IF observations does not match carrierHz.');
+
+end
+
+
+residualIF = ...
+    originalIF;
 
 
 %% Allocate outputs
