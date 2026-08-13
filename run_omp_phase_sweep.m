@@ -20,10 +20,10 @@ maxTargets = 2;
 %% Phase sweep
 %
 % First smoke test:
-phaseDegList = 0:30:330;
+% phaseDegList = 0:30:330;
 %
 % Full experiment:
-% phaseDegList = 0:10:350;
+phaseDegList = 0:10:350;
 
 numPhases = numel(phaseDegList);
 
