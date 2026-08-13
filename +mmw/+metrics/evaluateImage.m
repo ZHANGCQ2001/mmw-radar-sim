@@ -20,7 +20,7 @@ switch numTargets
     case 2
         metrics = evaluateTwo(metrics, cfg, truthXY, P, x, y, X, Y);
     otherwise
-        error('evaluateImage currently supports one or two targets only.');
+        metrics = evaluateMulti(metrics, cfg, truthXY, P, x, y, X, Y);
 end
 end
 
@@ -168,7 +168,165 @@ metrics.separated = separated;
 metrics.falsePeakControlled = falsePeakControlled;
 metrics.pass = separated && falsePeakControlled;
 end
+function metrics = evaluateMulti( ...
+    metrics, cfg, truthXY, P, x, y, X, Y)
+%EVALUATEMULTI Generic evaluation for three or more targets.
 
+numTargets = ...
+    size(truthXY, 1);
+
+estimatedXY = ...
+    nan(numTargets, 2);
+
+peakPower = ...
+    zeros(numTargets, 1);
+
+errorsM = ...
+    inf(numTargets, 1);
+
+
+%% Find spatial local maxima
+
+localMax = ...
+    localMaximumMask(P);
+
+
+%% Match one local peak around each truth position
+
+for targetIndex = 1:numTargets
+
+    dx = ...
+        X - truthXY(targetIndex,1);
+
+    dy = ...
+        Y - truthXY(targetIndex,2);
+
+
+    matchMask = ...
+        hypot(dx,dy) <= ...
+        cfg.metrics.targetMatchRadiusM & ...
+        localMax;
+
+
+    candidateIndices = ...
+        find(matchMask);
+
+
+    if ~isempty(candidateIndices)
+
+        [peakPower(targetIndex), bestOffset] = ...
+            max(P(candidateIndices));
+
+        linearIndex = ...
+            candidateIndices(bestOffset);
+
+        [iy, ix] = ...
+            ind2sub( ...
+                size(P), ...
+                linearIndex);
+
+
+        estimatedXY(targetIndex,:) = ...
+            [x(ix), y(iy)];
+
+
+        errorsM(targetIndex) = ...
+            norm( ...
+                estimatedXY(targetIndex,:) - ...
+                truthXY(targetIndex,:));
+
+    end
+
+end
+
+
+%% Coverage
+
+matched = ...
+    isfinite(errorsM) & ...
+    errorsM <= cfg.metrics.targetMatchRadiusM;
+
+coverage = ...
+    sum(matched);
+
+
+%% Exclude all true-target regions when finding false peaks
+
+falseMask = ...
+    true(size(P));
+
+
+for targetIndex = 1:numTargets
+
+    targetRegion = ...
+        abs(X-truthXY(targetIndex,1)) <= ...
+            cfg.metrics.targetExclusionXM & ...
+        abs(Y-truthXY(targetIndex,2)) <= ...
+            cfg.metrics.targetExclusionYM;
+
+    falseMask(targetRegion) = false;
+
+end
+
+
+if any(falseMask(:))
+
+    strongestFalse = ...
+        max(P(falseMask), [], 'all');
+
+else
+
+    strongestFalse = 0;
+
+end
+
+
+%% Weakest detected target relative to strongest false peak
+
+if coverage > 0
+
+    weakestDetectedPeak = ...
+        min(peakPower(matched));
+
+    targetToFalsePeakDb = ...
+        10*log10( ...
+            (weakestDetectedPeak + eps) / ...
+            (strongestFalse + eps));
+
+else
+
+    targetToFalsePeakDb = -Inf;
+
+end
+
+
+%% Output
+
+metrics.estimatedXYM = ...
+    estimatedXY;
+
+metrics.localizationErrorM = ...
+    errorsM;
+
+metrics.matched = ...
+    matched;
+
+metrics.coverage = ...
+    coverage;
+
+metrics.coverageFraction = ...
+    coverage / numTargets;
+
+metrics.strongestFalsePeakDb = ...
+    10*log10(strongestFalse + eps);
+
+metrics.targetToFalsePeakDb = ...
+    targetToFalsePeakDb;
+
+metrics.pass = ...
+    coverage == numTargets;
+
+end
 function mask = localMaximumMask(P)
 [numY,numX] = size(P);
 mask = false(numY,numX);
