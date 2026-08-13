@@ -15,18 +15,11 @@
 
 ## 快速运行
 
+推荐使用统一实验入口：
+
 ```matlab
 startup
-study = run_compare_arrays(true);
-```
-
-单独运行某个场景：
-
-```matlab
-uniformSingle = run_case("uniform", "single", true);
-golombSingle  = run_case("golomb", "single", true);
-uniformTwo    = run_case("uniform", "two", true, 0.05);
-golombTwo     = run_case("golomb", "two", true, 0.05);
+main
 ```
 
 快速检查：
@@ -51,14 +44,4 @@ result.metrics                  % 定位、分离、PSLR、伪峰等指标
 
 双目标的 `separated` 只有在两个真实目标都被匹配到后才可能为真，不再把两个错误伪峰误判为“成功分离”。`targetToFalsePeakDb` 用来判断真实目标峰是否高于目标区域之外的最强伪峰。
 
-## 当前阶段有意不包含
 
-- 双载频融合；
-- 相干因子加权；
-- oracle angle gate；
-- 时域匹配滤波成像；
-- 多载频 acquisition 管理；
-- artifacts/manifest 输出系统；
-- 差分共阵处理。
-
-Golomb 阵列在当前代码中仍采用六个物理节点的直接相参成像。如果后续要研究 Golomb 的“不重复基线/差分共阵自由度”优势，应作为第二条独立算法链增加，而不是混入当前直接相参求和流程。
