@@ -103,24 +103,23 @@ end
 % Build custom four-target scene
 % =============================================================
 
+sceneSpec.positionsM = ...
+    positionsM;
+
+sceneSpec.rcsM2 = ...
+    1.0;
+
+sceneSpec.scatterPhaseRad = ...
+    0.0;
+
+sceneSpec.type = ...
+    "four-target";
+
+
 sceneFour = ...
-    mmw.geometry.makeCustomScene( ...
-        positionsM, ...
+    mmw.geometry.makeScene( ...
+        sceneSpec, ...
         cfg.scene);
-
-
-%% Keep first experiment simple:
-% equal RCS and zero scattering phase
-
-for m = 1:numTargets
-
-    sceneFour.targets(m).rcsM2 = ...
-        1.0;
-
-    sceneFour.targets(m).scatterPhaseRad = ...
-        0.0;
-
-end
 
 
 %% ============================================================

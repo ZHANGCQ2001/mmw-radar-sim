@@ -1,45 +1,310 @@
-function scene = makeScene(type, sceneConfig, separationM)
-%MAKESCENE Build the single-target or two-target study scene.
+function scene = makeScene(spec, sceneConfig, separationM)
+%MAKESCENE Build preset or custom target scenes.
+%
+% Preset examples:
+%   scene = mmw.geometry.makeScene("single", cfg.scene);
+%   scene = mmw.geometry.makeScene("two", cfg.scene, 0.05);
+%
+% Custom example:
+%   spec.positionsM = [
+%       2.93 2.98 1.20
+%       2.98 2.98 1.20
+%       3.04 3.01 1.20
+%       3.10 2.95 1.20
+%   ];
+%
+%   spec.rcsM2 = 1;
+%   spec.scatterPhaseRad = 0;
+%
+%   scene = mmw.geometry.makeScene(spec, cfg.scene);
 
 arguments
-    type (1,1) string
+    spec
     sceneConfig struct
     separationM (1,1) double = NaN
 end
 
-if isnan(separationM)
-    separationM = sceneConfig.defaultSeparationM;
+
+%% ============================================================
+% Convert preset to generic scene specification
+% =============================================================
+
+if ischar(spec)
+    spec = string(spec);
 end
 
-centerM = sceneConfig.centerM;
 
-switch lower(type)
-    case {"single", "one"}
-        positionsM = centerM;
-        canonicalType = "single";
+if isstring(spec)
 
-    case {"two", "double", "two_5cm"}
-        positionsM = [centerM + [-separationM/2, 0, 0]; ...
-                      centerM + [ separationM/2, 0, 0]];
-        canonicalType = "two";
+    if ~isscalar(spec)
+        error('Scene preset must be a scalar string.');
+    end
 
-    otherwise
-        error('Unknown scene type: %s. Use "single" or "two".', type);
+    if isnan(separationM)
+        separationM = ...
+            sceneConfig.defaultSeparationM;
+    end
+
+    centerM = ...
+        sceneConfig.centerM;
+
+
+    switch lower(spec)
+
+        case {"single", "one"}
+
+            positionsM = ...
+                centerM;
+
+            sceneType = ...
+                "single";
+
+
+        case {"two", "double", "two_5cm"}
+
+            positionsM = [
+                centerM + [-separationM/2, 0, 0]
+                centerM + [ separationM/2, 0, 0]
+            ];
+
+            sceneType = ...
+                "two";
+
+
+        otherwise
+
+            error( ...
+                'Unknown scene preset: %s.', ...
+                spec);
+
+    end
+
+
+    customSpec.positionsM = ...
+        positionsM;
+
+    customSpec.type = ...
+        sceneType;
+
+    customSpec.separationM = ...
+        separationM;
+
+    spec = ...
+        customSpec;
+
 end
 
-prototype = struct('name', "", 'positionM', [0,0,0], ...
-    'velocityMps', [0,0,0], 'rcsM2', 1.0, 'scatterPhaseRad', 0.0);
-targets = repmat(prototype, 1, size(positionsM,1));
 
-for k = 1:numel(targets)
-    targets(k).name = "T" + k;
-    targets(k).positionM = positionsM(k,:);
-    targets(k).velocityMps = sceneConfig.defaultVelocityMps;
-    targets(k).rcsM2 = sceneConfig.defaultRcsM2;
-    targets(k).scatterPhaseRad = sceneConfig.defaultScatterPhaseRad;
+%% ============================================================
+% Validate custom specification
+% =============================================================
+
+if ~isstruct(spec)
+    error( ...
+        'Scene specification must be a preset string or struct.');
 end
 
-scene.type = canonicalType;
-scene.separationM = separationM;
-scene.targets = targets;
+
+if ~isfield(spec, 'positionsM')
+    error( ...
+        'Custom scene must contain spec.positionsM.');
+end
+
+
+positionsM = ...
+    double(spec.positionsM);
+
+
+if size(positionsM,2) ~= 3
+    error( ...
+        'spec.positionsM must be N x 3.');
+end
+
+
+numTargets = ...
+    size(positionsM,1);
+
+
+if numTargets < 1
+    error( ...
+        'Scene must contain at least one target.');
+end
+
+
+%% ============================================================
+% Target parameters
+% =============================================================
+
+rcsM2 = ...
+    expandScalarParameter( ...
+        spec, ...
+        'rcsM2', ...
+        sceneConfig.defaultRcsM2, ...
+        numTargets);
+
+
+scatterPhaseRad = ...
+    expandScalarParameter( ...
+        spec, ...
+        'scatterPhaseRad', ...
+        sceneConfig.defaultScatterPhaseRad, ...
+        numTargets);
+
+
+velocityMps = ...
+    expandVelocity( ...
+        spec, ...
+        sceneConfig.defaultVelocityMps, ...
+        numTargets);
+
+
+%% ============================================================
+% Construct targets
+% =============================================================
+
+prototype = struct( ...
+    'name', "", ...
+    'positionM', [0,0,0], ...
+    'velocityMps', [0,0,0], ...
+    'rcsM2', 1.0, ...
+    'scatterPhaseRad', 0.0);
+
+
+targets = ...
+    repmat( ...
+        prototype, ...
+        1, ...
+        numTargets);
+
+
+for k = 1:numTargets
+
+    targets(k).name = ...
+        "T" + k;
+
+    targets(k).positionM = ...
+        positionsM(k,:);
+
+    targets(k).velocityMps = ...
+        velocityMps(k,:);
+
+    targets(k).rcsM2 = ...
+        rcsM2(k);
+
+    targets(k).scatterPhaseRad = ...
+        scatterPhaseRad(k);
+
+end
+
+
+%% ============================================================
+% Scene metadata
+% =============================================================
+
+if isfield(spec, 'type')
+
+    scene.type = ...
+        string(spec.type);
+
+else
+
+    scene.type = ...
+        "custom";
+
+end
+
+
+if isfield(spec, 'separationM')
+
+    scene.separationM = ...
+        spec.separationM;
+
+else
+
+    scene.separationM = ...
+        NaN;
+
+end
+
+
+scene.targets = ...
+    targets;
+
+end
+
+
+%% ============================================================
+% Local helpers
+% =============================================================
+
+function value = expandScalarParameter( ...
+    spec, fieldName, defaultValue, numTargets)
+
+if isfield(spec, fieldName)
+
+    value = ...
+        spec.(fieldName);
+
+else
+
+    value = ...
+        defaultValue;
+
+end
+
+
+value = ...
+    value(:);
+
+
+if isscalar(value)
+
+    value = ...
+        repmat( ...
+            value, ...
+            numTargets, ...
+            1);
+
+elseif numel(value) ~= numTargets
+
+    error( ...
+        '%s must be scalar or contain one value per target.', ...
+        fieldName);
+
+end
+
+end
+
+
+function velocityMps = expandVelocity( ...
+    spec, defaultVelocityMps, numTargets)
+
+if isfield(spec, 'velocityMps')
+
+    velocityMps = ...
+        double(spec.velocityMps);
+
+else
+
+    velocityMps = ...
+        defaultVelocityMps;
+
+end
+
+
+if isequal(size(velocityMps), [1,3])
+
+    velocityMps = ...
+        repmat( ...
+            velocityMps, ...
+            numTargets, ...
+            1);
+
+elseif ~isequal(size(velocityMps), [numTargets,3])
+
+    error( ...
+        'velocityMps must be 1x3 or N x 3.');
+
+end
+
 end
