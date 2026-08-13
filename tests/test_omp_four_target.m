@@ -1,0 +1,73 @@
+function test_omp_four_target()
+%TEST_OMP_FOUR_TARGET Regression test for four-target OMP recovery.
+
+cfg = ...
+    mmw.config.defaultConfig();
+
+exp = ...
+    mmw.config.defaultExperiment();
+
+
+sceneSpec.positionsM = [
+    2.9300, 2.9800, 1.2000
+    2.9800, 2.9800, 1.2000
+    3.0400, 3.0100, 1.2000
+    3.1000, 2.9500, 1.2000
+];
+
+sceneSpec.rcsM2 = ...
+    1.0;
+
+sceneSpec.scatterPhaseRad = ...
+    0.0;
+
+sceneSpec.type = ...
+    "four-target-regression";
+
+
+exp.sceneSpec = ...
+    sceneSpec;
+
+exp.reconstruction.maxTargets = ...
+    4;
+
+
+result = ...
+    mmw.runExperiment( ...
+        exp, ...
+        cfg);
+
+
+m = ...
+    result.ompMetrics;
+
+
+assert( ...
+    m.supportPass, ...
+    'Four-target support recovery failed.');
+
+
+assert( ...
+    m.maxPositionErrorM <= 0.005, ...
+    'Four-target localization error exceeded 5 mm.');
+
+
+assert( ...
+    m.positionRmseM <= 0.003, ...
+    'Four-target position RMSE exceeded 3 mm.');
+
+
+assert( ...
+    m.finalResidualRelativeError <= 0.25, ...
+    'Four-target residual became unexpectedly large.');
+
+
+assert( ...
+    m.gramConditionNumber <= 3, ...
+    'Four-target joint LS became poorly conditioned.');
+
+
+fprintf( ...
+    'test_omp_four_target passed.\n');
+
+end
