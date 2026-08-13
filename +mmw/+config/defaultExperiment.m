@@ -8,7 +8,8 @@ exp.arrayType = ...
 exp.carrierHz = ...
     (60:0.4:64) * 1e9;
 
-
+% Fusion method for the full imaging path
+% (reconstruction.method = "none").
 exp.fusionMethod = ...
     "coherent-normalized";
 

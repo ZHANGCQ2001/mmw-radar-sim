@@ -12,41 +12,33 @@ startup;
 cfg = ...
     mmw.config.defaultConfig();
 
-
 exp = ...
     mmw.config.defaultExperiment();
 
 
 %% ============================================================
 % USER SETTINGS
+%
+% Override defaultExperiment only when needed.
 % =============================================================
 
-exp.arrayType = ...
-    "golomb";
-
-
-exp.carrierHz = ...
-    (60:0.4:64) * 1e9;
-
-
-exp.fusionMethod = ...
-    "coherent-normalized";
+% Examples:
+%
+% exp.arrayType = "uniform";
+%
+% exp.carrierHz = ...
+%     (60:0.2:64) * 1e9;
+%
+% exp.reconstruction.method = ...
+%     "none";
+%
+% exp.plot.enabled = ...
+%     false;
 
 
 %% ============================================================
 % Scene
 % =============================================================
-
-% Example 1:
-% exp.sceneSpec = "single";
-
-
-% Example 2:
-% exp.sceneSpec = "two";
-% exp.separationM = 0.05;
-
-
-% Example 3: arbitrary multi-target scene
 
 sceneSpec.positionsM = [
     2.9300, 2.9800, 1.2000
@@ -64,20 +56,8 @@ sceneSpec.scatterPhaseRad = ...
 sceneSpec.type = ...
     "custom";
 
-
 exp.sceneSpec = ...
     sceneSpec;
-
-
-%% ============================================================
-% Reconstruction
-% =============================================================
-
-exp.reconstruction.method = ...
-    "omp";
-
-exp.reconstruction.maxTargets = ...
-    [];
 
 
 %% ============================================================
@@ -140,5 +120,18 @@ if ~isempty(m)
     fprintf( ...
         'Final residual     : %.3e\n', ...
         m.finalResidualRelativeError);
+
+end
+
+%% ============================================================
+% Plot
+% =============================================================
+
+if exp.plot.enabled && ...
+        ~isempty(result.reconstruction)
+
+    mmw.plotting.plotOmpSupport( ...
+        result.scene, ...
+        result.reconstruction);
 
 end
